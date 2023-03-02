@@ -20,7 +20,8 @@ class Layer():
         input_size: int,
         output_size: int,
         activation = 'sigmoid',
-        weight_init: str = 'random'
+        weight_init: str = 'random',
+        clip_norm: float = 1.
     ) -> None:
         if weight_init == 'xavier':
             self.w = np.random.normal(scale=np.sqrt(2/(input_size + output_size)), size=(output_size, input_size))
@@ -40,6 +41,7 @@ class Layer():
             self.activation = ReLU()
         elif activation == 'softmax' or activation.__class__ == Softmax:
             self.activation = Softmax()
+        self.clip_norm = clip_norm
     
     def forward(self, x: np.array, eval_mode: bool = False) -> np.array:
         """
@@ -86,6 +88,13 @@ class Layer():
             self.grad_b += grad_to_return
         else:
             self.grad_b += np.mean(grad_to_return, axis=0)
+        if self.clip_norm is not None:
+            norm_grad_w = np.sqrt(np.sum(self.grad_w**2)) / (self.w.shape[0] * self.w.shape[1])
+            norm_grad_b = np.sqrt(np.sum(self.grad_b**2)) / self.b.shape[0]
+            if norm_grad_w > self.clip_norm:
+                self.grad_w /= norm_grad_w
+            if norm_grad_b > self.clip_norm:
+                self.grad_b /= norm_grad_b
         return grad_to_return
 
 class FeedForwardNeuralNetwork():
@@ -113,13 +122,14 @@ class FeedForwardNeuralNetwork():
         input_size: int = 784,
         output_size: int = 10,
         activation = 'sigmoid',
-        weight_init: str = 'random'
+        weight_init: str = 'random',
+        clip_norm: float = 1.
     ) -> None:
-        self.input_layer = Layer(input_size, hidden_size, activation, weight_init)
+        self.input_layer = Layer(input_size, hidden_size, activation, weight_init, clip_norm)
         self.hidden_layers = []
         for i in range(num_layers):
-            self.hidden_layers.append(Layer(hidden_size, hidden_size, activation, weight_init))
-        self.output_layer = Layer(hidden_size, output_size, 'softmax', weight_init)
+            self.hidden_layers.append(Layer(hidden_size, hidden_size, activation, weight_init, clip_norm))
+        self.output_layer = Layer(hidden_size, output_size, 'softmax', weight_init, clip_norm)
     
     def forward(self, x: np.array, eval_mode: bool = False) -> np.array:
         """
