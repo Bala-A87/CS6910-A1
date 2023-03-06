@@ -25,10 +25,11 @@ class Layer():
     ) -> None:
         if weight_init == 'xavier':
             self.w = np.random.normal(scale=np.sqrt(2/(input_size + output_size)), size=(output_size, input_size))
-            self.b = np.random.normal(scale=np.sqrt(2/(input_size + output_size)), size=(output_size,))
+            # self.b = np.random.normal(scale=np.sqrt(2/(input_size + output_size)), size=(output_size,))
         else:
             self.w = np.random.normal(size=(output_size, input_size))   # shape: (output_size, input_size)
-            self.b = np.random.normal(size=(output_size,))  # shape: (output_size,)
+            # self.b = np.random.normal(size=(output_size,))  # shape: (output_size,)
+        self.b = np.zeros((output_size,))
         self.grad_w = np.zeros_like(self.w)
         self.grad_b = np.zeros_like(self.b)
         if activation == 'identity' or activation.__class__ == Identity:
