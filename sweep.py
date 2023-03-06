@@ -8,6 +8,13 @@ from learn import *
 from pathlib import Path
 import os
 import datetime as dt
+import argparse
+
+args_parser = argparse.ArgumentParser()
+
+args_parser.add_argument('-l', '--loss', type=str.lower, choices=['cross_entropy', 'mean_squared_error'], help='Loss function to use for training the model')
+
+args = args_parser.parse_args()
 
 data_dir = Path('./data/')
 data_path = Path('./data/fashion_mnist.npz')
@@ -28,10 +35,10 @@ else:
 def perform_run(config=None):
     with wandb.init(config=config) as run:
         config = wandb.config
-        run.name = f'MSE_hl_{config.num_layers}_hs_{config.hidden_size}_{config.activation[:4]}_{config.weight_init[:3]}_{config.optimizer}_lr_{config.lr}_wd_{config.weight_decay}_bs_{config.batch_size}'
+        run.name = f'{"MSE" if args.loss=="mean_squared_error" else "CE"}_hl_{config.num_layers}_hs_{config.hidden_size}_{config.activation[:4]}_{config.weight_init[:3]}_{config.optimizer}_lr_{config.lr}_wd_{config.weight_decay}_bs_{config.batch_size}'
         X_t, X_v, Y_t, Y_v = train_test_split(X_train.reshape(-1, 784), Y_train, test_size=0.1)
         model = FeedForwardNeuralNetwork(config.num_layers, config.hidden_size, activation=config.activation, weight_init=config.weight_init)
-        loss_fn = MeanSquaredErrorLoss()
+        loss_fn = CrossEntropyLoss() if args.loss == 'cross_entropy' else MeanSquaredErrorLoss()
         if config.optimizer == 'sgd':
             optimizer = StochasticGradientDescent(model, lr=config.lr, weight_decay=config.weight_decay)
         elif config.optimizer == 'momentum':
@@ -63,7 +70,7 @@ def perform_run(config=None):
 
 sweep_config = {
     'method': 'random',
-    'name' : 'MSE_'+str(dt.datetime.now().strftime("%d-%m-%y_%H:%M"))
+    'name' : f'{"MSE" if args.loss=="mean_squared_error" else "CE"}_'+str(dt.datetime.now().strftime("%d-%m-%y_%H:%M"))
 }
 sweep_metric = {
     'name': 'val_accuracy',
@@ -104,4 +111,4 @@ parameters.update({
 })
 sweep_id = wandb.sweep(sweep_config, project='CS6910-A1') 
 
-wandb.agent(sweep_id, perform_run, count=200)
+wandb.agent(sweep_id, perform_run, count=250)
