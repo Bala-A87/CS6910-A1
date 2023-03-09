@@ -172,9 +172,10 @@ class Softmax(Activation):
         Returns: softmax(x) (np.array): The output, softmax(x)
         """
         max_x = np.max(x, axis=-1).reshape(-1, 1)
-        exp_x = np.exp(x - max_x)
+        exp_x = np.exp(x - max_x) # to ensure overflow doesn't occur since this prevents any value from exceeding 1
         total = np.sum(exp_x, axis=-1).reshape(-1, 1)
-        return np.maximum((exp_x / total).reshape(x.shape), self.eps)
+        return np.maximum((exp_x / total).reshape(x.shape), self.eps) 
+        # ensuring no output is lesser than eps, for numerical stability in cross-entropy loss/grad computation
     
     def backward(self, output: np.array) -> np.array: 
         """
@@ -187,6 +188,8 @@ class Softmax(Activation):
             grad (np.array): The gradient of the softmax activation wrt the required inputs (for which the output is passed
                 as proxy)
         """
+        # Softmax has a 2d gradient, corresponding to each output-input pair, for a single datapoint, and a vector of such
+        # 2d gradients for multiple datapoints
         if len(output.shape) == 1:
             return output * np.eye(len(output)) - np.matmul(output.reshape(-1, 1), output.reshape(1, -1))
         else:

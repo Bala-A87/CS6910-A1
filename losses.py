@@ -2,7 +2,7 @@ import numpy as np
 
 class LossFunction():
     """
-    Template class to implement a loss function. Each chuld class must implement two methods, `forward` and `backward`.
+    Template class to implement a loss function. Each child class must implement two methods, `forward` and `backward`.
 
     `forward` accepts the predicted probabilities (np.array of shape (num_classes,) or (num_samples, num_classes)) and the 
     true class labels (scalar or np.array of shape (num_samples,)) and returns the loss (or average loss).

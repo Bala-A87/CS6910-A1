@@ -95,4 +95,5 @@ def predict(
         Y (np.array): The predicted probabilities of each class, corresponding to each data point.
             Array of shape (num_samples, num_outputs) or (num_outputs,).
     """
-    return model.forward(X, True)
+    return model.forward(X, True) 
+    # eval_mode=True, so as to not store inputs, pre-activations and outputs for grad computation

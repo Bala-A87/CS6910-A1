@@ -33,7 +33,6 @@ args_parser.add_argument('-a', '--activation', type=str.lower, choices=['identit
 args_parser.add_argument('-v', '--verbose', type=int, default=2, help='Verbosity of information printed during training. verbose <= 0: No information is printed. verbose = 1: Information at the end of training is printed. verbose >= 2: Information is printed during each epoch of training')
 args_parser.add_argument('-run', '--run_test', action='store_true', help='Pass flag if trained model is to be run on test data')
 args_parser.add_argument('-cm', '--conf_mat', action='store_true', help='Pass flag if confusion matrix (on test data) is to be logged with wandb. Ignored if --wandb_project is None or --run_test is not passed')
-# add other args, like clip_norm (if needed)
 
 args = args_parser.parse_args()
 

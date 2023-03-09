@@ -14,31 +14,36 @@ class Layer():
         weight_init (str, optional): type of initialization to be performed for the weights
             Allowed initializations: 'random', 'xavier'
             Defaults to 'random'.
+        clip_norm (float, optional): gradient clipping threshold to use, to prevent exploding gradients.
+            When the norm of a weight exceeds clip_norm * number of weights in weight matrix/bias vector,
+            it is reduced to clip_norm * number of weights.
+            Defaults to 1.0
+            Set to None if gradient clipping is not to be done.
     """
     def __init__(
         self,
         input_size: int,
         output_size: int,
-        activation = 'sigmoid',
+        activation: str = 'sigmoid',
         weight_init: str = 'random',
         clip_norm: float = 1.
     ) -> None:
         if weight_init == 'xavier':
             self.w = np.random.normal(scale=np.sqrt(2/(input_size + output_size)), size=(output_size, input_size))
         else:
-            self.w = np.random.normal(size=(output_size, input_size))   # shape: (output_size, input_size)
+            self.w = np.random.normal(size=(output_size, input_size)) 
         self.b = np.zeros((output_size,))
         self.grad_w = np.zeros_like(self.w)
         self.grad_b = np.zeros_like(self.b)
-        if activation == 'identity' or activation.__class__ == Identity:
+        if activation == 'identity':
             self.activation = Identity()
-        elif activation == 'sigmoid' or activation.__class__ == Sigmoid:
+        elif activation == 'sigmoid':
             self.activation = Sigmoid()
-        elif activation == 'tanh' or activation.__class__ == Tanh:
+        elif activation == 'tanh':
             self.activation = Tanh()
-        elif activation == 'relu' or activation.__class__ == ReLU:
+        elif activation == 'relu':
             self.activation = ReLU()
-        elif activation == 'softmax' or activation.__class__ == Softmax:
+        elif activation == 'softmax':
             self.activation = Softmax()
         self.clip_norm = clip_norm
     
@@ -52,7 +57,7 @@ class Layer():
                 Defaults to False.
         Returns: h (np.array): the output produced by the layer, of size (output_size,) or (num_samples, output_size).
         """
-        if not eval_mode:
+        if not eval_mode: # store input, pre-activation and output for grad computation
             self.input = x
             self.pre_activation = np.matmul(x, self.w.T) + self.b
             self.output = self.activation.forward(self.pre_activation)
@@ -113,6 +118,11 @@ class FeedForwardNeuralNetwork():
         weight_init (str, optional): type of initialization to be performed for the weights
             Allowed initializations: 'random', 'xavier'
             Defaults to 'random'.
+        clip_norm (float, optional): gradient clipping threshold to use, to prevent exploding gradients.
+            When the norm of a weight exceeds clip_norm * number of weights in weight matrix/bias vector,
+            it is reduced to clip_norm * number of weights.
+            Defaults to 1.0
+            Set to None if gradient clipping is not to be done.
     """
     def __init__(
         self,
