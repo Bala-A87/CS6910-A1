@@ -11,7 +11,7 @@ class Layer():
         activation (str, optional): activation function used by the layer. 
             Allowed activations: 'identity', 'sigmoid', 'tanh', 'relu', 'softmax'
             Defaults to 'sigmoid'.
-        weight_init (str, optional): type of initialization to be performed for the weights and biases
+        weight_init (str, optional): type of initialization to be performed for the weights
             Allowed initializations: 'random', 'xavier'
             Defaults to 'random'.
     """
@@ -25,10 +25,8 @@ class Layer():
     ) -> None:
         if weight_init == 'xavier':
             self.w = np.random.normal(scale=np.sqrt(2/(input_size + output_size)), size=(output_size, input_size))
-            # self.b = np.random.normal(scale=np.sqrt(2/(input_size + output_size)), size=(output_size,))
         else:
             self.w = np.random.normal(size=(output_size, input_size))   # shape: (output_size, input_size)
-            # self.b = np.random.normal(size=(output_size,))  # shape: (output_size,)
         self.b = np.zeros((output_size,))
         self.grad_w = np.zeros_like(self.w)
         self.grad_b = np.zeros_like(self.b)
@@ -112,7 +110,7 @@ class FeedForwardNeuralNetwork():
         activation (str, optional): activation function for the hidden layers.
             Allowed activations: 'identity', 'sigmoid', 'tanh', 'relu'
             Defaults to 'sigmoid'.
-        weight_init (str, optional): type of initialization to be performed for the weights and biases
+        weight_init (str, optional): type of initialization to be performed for the weights
             Allowed initializations: 'random', 'xavier'
             Defaults to 'random'.
     """
@@ -128,7 +126,7 @@ class FeedForwardNeuralNetwork():
     ) -> None:
         self.input_layer = Layer(input_size, hidden_size, activation, weight_init, clip_norm)
         self.hidden_layers = []
-        for i in range(num_layers):
+        for i in range(num_layers-1):
             self.hidden_layers.append(Layer(hidden_size, hidden_size, activation, weight_init, clip_norm))
         self.output_layer = Layer(hidden_size, output_size, 'softmax', weight_init, clip_norm)
     

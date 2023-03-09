@@ -12,7 +12,7 @@ import argparse
 
 args_parser = argparse.ArgumentParser()
 
-args_parser.add_argument('-l', '--loss', type=str.lower, choices=['cross_entropy', 'mean_squared_error'], help='Loss function to use for training the model')
+args_parser.add_argument('-l', '--loss', type=str.upper, choices=['CE', 'MSE'], default='CE', help='Loss function to use for training the model')
 
 args = args_parser.parse_args()
 
@@ -35,10 +35,10 @@ else:
 def perform_run(config=None):
     with wandb.init(config=config) as run:
         config = wandb.config
-        run.name = f'{"MSE" if args.loss=="mean_squared_error" else "CE"}_hl_{config.num_layers}_hs_{config.hidden_size}_{config.activation[:4]}_{config.weight_init[:3]}_{config.optimizer}_lr_{config.lr}_wd_{config.weight_decay}_bs_{config.batch_size}'
+        run.name = f'{config.loss_function}_hl_{config.num_layers}_hs_{config.hidden_size}_{config.activation[:4]}_{config.weight_init[:3]}_{config.optimizer}_lr_{config.lr}_wd_{config.weight_decay}_bs_{config.batch_size}'
         X_t, X_v, Y_t, Y_v = train_test_split(X_train.reshape(-1, 784), Y_train, test_size=0.1)
         model = FeedForwardNeuralNetwork(config.num_layers, config.hidden_size, activation=config.activation, weight_init=config.weight_init)
-        loss_fn = CrossEntropyLoss() if args.loss == 'cross_entropy' else MeanSquaredErrorLoss()
+        loss_fn = CrossEntropyLoss() if config.loss_function == 'CE' else MeanSquaredErrorLoss()
         if config.optimizer == 'sgd':
             optimizer = StochasticGradientDescent(model, lr=config.lr, weight_decay=config.weight_decay)
         elif config.optimizer == 'momentum':
@@ -62,15 +62,14 @@ def perform_run(config=None):
             loss_fn,
             metric,
             epochs=config.epochs,
-            batch_size=config.batch_size,
-            verbose=0
+            batch_size=config.batch_size
         )
         for i in range(len(history['epoch'])):
             wandb.log({'epoch': history['epoch'][i], 'loss': history['train_loss'][i], 'accuracy': history['train_score'][i], 'val_loss': history['val_loss'][i], 'val_accuracy': history['val_score'][i]})
 
 sweep_config = {
     'method': 'random',
-    'name' : f'{"MSE" if args.loss=="mean_squared_error" else "CE"}_'+str(dt.datetime.now().strftime("%d-%m-%y_%H:%M"))
+    'name' : args.loss+'_'+str(dt.datetime.now().strftime("%d-%m-%y_%H:%M"))
 }
 sweep_metric = {
     'name': 'val_accuracy',
@@ -79,7 +78,7 @@ sweep_metric = {
 sweep_config['metric'] = sweep_metric
 parameters = {
     'num_layers': {
-        'values': [1, 2, 3, 4]
+        'values': [1, 2, 3, 4, 5]
     },
     'hidden_size': {
         'values': [16, 32, 64, 128]
@@ -107,6 +106,9 @@ sweep_config['parameters'] = parameters
 parameters.update({
     'epochs': {
         'value': 10
+    },
+    'loss_function': {
+    'value': args.loss
     }
 })
 sweep_id = wandb.sweep(sweep_config, project='CS6910-A1') 
