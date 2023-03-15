@@ -1,5 +1,6 @@
 import numpy as np
 from nn import FeedForwardNeuralNetwork
+from typing import Tuple
 
 class Optimizer():
     """
@@ -51,13 +52,9 @@ class StochasticGradientDescent(Optimizer):
         """
         Performs one step/update to the parameters of the model, using grads computed by the model's backward function.
         """
-        self.model.output_layer.w -= self.lr * (self.model.output_layer.grad_w + self.weight_decay * self.model.output_layer.w)
-        self.model.output_layer.b -= self.lr * (self.model.output_layer.grad_b + self.weight_decay * self.model.output_layer.b)
-        for hidden_layer in self.model.hidden_layers:
-            hidden_layer.w -= self.lr * (hidden_layer.grad_w + self.weight_decay * hidden_layer.w)
-            hidden_layer.b -= self.lr * (hidden_layer.grad_b + self.weight_decay * hidden_layer.b)
-        self.model.input_layer.w -= self.lr * (self.model.input_layer.grad_w + self.weight_decay * self.model.input_layer.w)
-        self.model.input_layer.b -= self.lr * (self.model.input_layer.grad_b + self.weight_decay * self.model.input_layer.b)
+        for layer in self.model.layers:
+            layer.w -= self.lr * (layer.grad_w + self.weight_decay * layer.w)
+            layer.b -= self.lr * (layer.grad_b + self.weight_decay * layer.b)
 
 class MomentumGradientDescent(Optimizer):
     """
@@ -80,33 +77,21 @@ class MomentumGradientDescent(Optimizer):
     ) -> None:
         super().__init__(model, lr, weight_decay)
         self.beta = beta
-        self.input_u_w = np.zeros_like(model.input_layer.w)
-        self.input_u_b = np.zeros_like(model.input_layer.b)
-        self.hidden_u_ws = []
-        self.hidden_u_bs = []
-        for hidden_layer in model.hidden_layers:
-            self.hidden_u_ws.append(np.zeros_like(hidden_layer.w))
-            self.hidden_u_bs.append(np.zeros_like(hidden_layer.b))
-        self.output_u_w = np.zeros_like(model.output_layer.w)
-        self.output_u_b = np.zeros_like(model.output_layer.b)
+        self.u_ws = []
+        self.u_bs = []
+        for layer in model.layers:
+            self.u_ws.append(np.zeros_like(layer.w))
+            self.u_bs.append(np.zeros_like(layer.b))
 
     def step(self) -> None:
         """
         Performs one step/update to the parameters of the model, using grads computed by the model's backward function.
         """
-        self.output_u_w = self.beta * self.output_u_w + self.lr * (self.model.output_layer.grad_w + self.weight_decay * self.model.output_layer.w)
-        self.model.output_layer.w -= self.output_u_w
-        self.output_u_b = self.beta * self.output_u_b + self.lr * (self.model.output_layer.grad_b + self.weight_decay * self.model.output_layer.b)
-        self.model.output_layer.b -= self.output_u_b
-        for hidden_layer, hidden_u_w, hidden_u_b in zip(self.model.hidden_layers, self.hidden_u_ws, self.hidden_u_bs):
-            hidden_u_w = self.beta * hidden_u_w + self.lr * (hidden_layer.grad_w + self.weight_decay * hidden_layer.w)
-            hidden_layer.w -= hidden_u_w
-            hidden_u_b = self.beta * hidden_u_b + self.lr * (hidden_layer.grad_b + self.weight_decay * hidden_layer.b)
-            hidden_layer.b -= hidden_u_b
-        self.input_u_w = self.beta * self.input_u_w + self.lr * (self.model.input_layer.grad_w + self.weight_decay * self.model.input_layer.w)
-        self.model.input_layer.w -= self.input_u_w
-        self.input_u_b = self.beta * self.input_u_b + self.lr * (self.model.input_layer.grad_b + self.weight_decay * self.model.input_layer.b)
-        self.model.input_layer.b -= self.input_u_b
+        for layer, u_w, u_b in zip(self.model.layers, self.u_ws, self.u_bs):
+            u_w = self.beta * u_w + self.lr * (layer.grad_w + self.weight_decay * layer.w)
+            layer.w -= u_w
+            u_b = self.beta * u_b + self.lr * (layer.grad_b + self.weight_decay * layer.b)
+            layer.b -= u_b
 
 class NesterovGradientDescent(Optimizer):
     """
@@ -129,33 +114,21 @@ class NesterovGradientDescent(Optimizer):
     ) -> None:
         super().__init__(model, lr, weight_decay)
         self.beta = beta
-        self.input_u_w = np.zeros_like(model.input_layer.w)
-        self.input_u_b = np.zeros_like(model.input_layer.b)
-        self.hidden_u_ws = []
-        self.hidden_u_bs = []
-        for hidden_layer in model.hidden_layers:
-            self.hidden_u_ws.append(np.zeros_like(hidden_layer.w))
-            self.hidden_u_bs.append(np.zeros_like(hidden_layer.b))
-        self.output_u_w = np.zeros_like(model.output_layer.w)
-        self.output_u_b = np.zeros_like(model.output_layer.b)
+        self.u_ws = []
+        self.u_bs = []
+        for layer in model.layers:
+            self.u_ws.append(np.zeros_like(layer.w))
+            self.u_bs.append(np.zeros_like(layer.b))
     
     def step(self) -> None:
         """
         Performs one step/update to the parameters of the model, using grads computed by the model's backward function.
         """
-        self.input_u_w = self.beta * self.input_u_w + self.model.input_layer.grad_w
-        self.model.input_layer.w -= self.lr * (self.beta * self.input_u_w + self.model.input_layer.grad_w + self.weight_decay * self.model.input_layer.w)
-        self.input_u_b = self.beta * self.input_u_b + self.model.input_layer.grad_b
-        self.model.input_layer.b -= self.lr * (self.beta * self.input_u_b + self.model.input_layer.grad_b + self.weight_decay * self.model.input_layer.b)
-        for hidden_layer, hidden_u_w, hidden_u_b in zip(self.model.hidden_layers, self.hidden_u_ws, self.hidden_u_bs):
-            hidden_u_w = self.beta * hidden_u_w + hidden_layer.grad_w
-            hidden_layer.w -= self.lr * (self.beta * hidden_u_w + hidden_layer.grad_w + self.weight_decay * hidden_layer.w)
-            hidden_u_b = self.beta * hidden_u_b + hidden_layer.grad_b
-            hidden_layer.b -= self.lr * (self.beta * hidden_u_b + hidden_layer.grad_b + self.weight_decay * hidden_layer.b)
-        self.output_u_w = self.beta * self.output_u_w + self.model.output_layer.grad_w
-        self.model.output_layer.w -= self.lr * (self.beta * self.output_u_w + self.model.output_layer.grad_w + self.weight_decay * self.model.output_layer.w)
-        self.output_u_b = self.beta * self.output_u_b + self.model.output_layer.grad_b
-        self.model.output_layer.b -= self.lr * (self.beta * self.output_u_b + self.model.output_layer.grad_b + self.weight_decay * self.model.output_layer.b)
+        for layer, u_w, u_b in zip(self.model.layers, self.u_ws, self.u_bs):
+            u_w = self.beta * u_w + layer.grad_w
+            layer.w -= self.lr * (self.beta * u_w + layer.grad_w + self.weight_decay * layer.w)
+            u_b = self.beta * u_b + layer.grad_b
+            layer.b -= self.lr * (self.beta * u_b + layer.grad_b + self.weight_decay * layer.b)
 
 class RMSProp(Optimizer):
     """
@@ -182,35 +155,21 @@ class RMSProp(Optimizer):
         super().__init__(model, lr, weight_decay)
         self.beta = beta
         self.eps = eps
-        self.input_v_w = np.zeros_like(model.input_layer.w)
-        self.input_v_b = np.zeros_like(model.input_layer.b)
-        self.hidden_v_ws = []
-        self.hidden_v_bs = []
-        for hidden_layer in model.hidden_layers:
-            self.hidden_v_ws.append(np.zeros_like(hidden_layer.w))
-            self.hidden_v_bs.append(np.zeros_like(hidden_layer.b))
-        self.output_v_w = np.zeros_like(model.output_layer.w)
-        self.output_v_b = np.zeros_like(model.output_layer.b)
+        self.v_ws = []
+        self.v_bs = []
+        for layer in model.layers:
+            self.v_ws.append(np.zeros_like(layer.w))
+            self.v_bs.append(np.zeros_like(layer.b))
 
     def step(self) -> None:
         """
         Performs one step/update to the parameters of the model, using grads computed by the model's backward function.
         """
-        self.input_v_w = self.beta * self.input_v_w + (1 - self.beta) * self.model.input_layer.grad_w**2
-        self.model.input_layer.w -= self.lr * (self.model.input_layer.grad_w + self.weight_decay * self.model.input_layer.w) / np.sqrt(self.input_v_w + self.eps)
-        self.input_v_b = self.beta * self.input_v_b + (1 - self.beta) * self.model.input_layer.grad_b**2 
-        self.model.input_layer.b -= self.lr * (self.model.input_layer.grad_b + self.weight_decay * self.model.input_layer.b) / np.sqrt(self.input_v_b + self.eps)
-        for hidden_layer, hidden_v_w, hidden_v_b in zip(self.model.hidden_layers, self.hidden_v_ws, self.hidden_v_bs):
-            hidden_v_w = self.beta * hidden_v_w + (1 - self.beta) * hidden_layer.grad_w**2
-            hidden_layer.w -= self.lr * (hidden_layer.grad_w + self.weight_decay * hidden_layer.w) / np.sqrt(hidden_v_w + self.eps)
-            hidden_v_b = self.beta * hidden_v_b + (1 - self.beta) * hidden_layer.grad_b**2
-            hidden_layer.b -= self.lr * (hidden_layer.grad_b + self.weight_decay * hidden_layer.b) / np.sqrt(hidden_v_b + self.eps)
-        self.output_v_w = self.beta * self.output_v_w + (1 - self.beta) * self.model.output_layer.grad_w**2
-        self.model.output_layer.w -= self.lr * (self.model.output_layer.grad_w + self.weight_decay * self.model.output_layer.w) / np.sqrt(self.output_v_w + self.eps)
-        self.output_v_b = self.beta * self.output_v_b + (1 - self.beta) * self.model.output_layer.grad_b**2 
-        self.model.output_layer.b -= self.lr * (self.model.output_layer.grad_b + self.weight_decay * self.model.output_layer.b) / np.sqrt(self.output_v_b + self.eps)
-
-from typing import Tuple
+        for layer, v_w, v_b in zip(self.model.layers, self.v_ws, self.v_bs):
+            v_w = self.beta * v_w + (1 - self.beta) * layer.grad_w**2
+            layer.w -= self.lr * (layer.grad_w + self.weight_decay * layer.w) / np.sqrt(v_w + self.eps)
+            v_b = self.beta * v_b + (1 - self.beta) * layer.grad_b**2
+            layer.b -= self.lr * (layer.grad_b + self.weight_decay * layer.b) / np.sqrt(v_b + self.eps)
 
 class Adam(Optimizer):
     """
@@ -239,47 +198,31 @@ class Adam(Optimizer):
         self.beta1, self.beta2 = betas
         self.eps = eps
         self.pow_beta1, self.pow_beta2 = betas
-        self.input_m_w, self.input_v_w = np.zeros_like(self.model.input_layer.w), np.zeros_like(self.model.input_layer.w)
-        self.input_m_b, self.input_v_b = np.zeros_like(self.model.input_layer.b), np.zeros_like(self.model.input_layer.b)
-        self.hidden_m_ws, self.hidden_v_ws = [], []
-        self.hidden_m_bs, self.hidden_v_bs = [], []
-        for hidden_layer in self.model.hidden_layers:
-            self.hidden_m_ws.append(np.zeros_like(hidden_layer.w))
-            self.hidden_v_ws.append(np.zeros_like(hidden_layer.w))
-            self.hidden_m_bs.append(np.zeros_like(hidden_layer.b))
-            self.hidden_v_bs.append(np.zeros_like(hidden_layer.b))
-        self.output_m_w, self.output_v_w = np.zeros_like(self.model.output_layer.w), np.zeros_like(self.model.output_layer.w)
-        self.output_m_b, self.output_v_b = np.zeros_like(self.model.output_layer.b), np.zeros_like(self.model.output_layer.b)
+        self.m_ws, self.v_ws = [], []
+        self.m_bs, self.v_bs = [], []
+        for layer in self.model.layers:
+            self.m_ws.append(np.zeros_like(layer.w))
+            self.v_ws.append(np.zeros_like(layer.w))
+            self.m_bs.append(np.zeros_like(layer.b))
+            self.v_bs.append(np.zeros_like(layer.b))
 
     def step(self) -> None:
         """
         Performs one step/update to the parameters of the model, using grads computed by the model's backward function.
         """
-        self.input_m_w = self.beta1 * self.input_m_w + (1 - self.beta1) * self.model.input_layer.grad_w
-        self.input_v_w = self.beta2 * self.input_v_w + (1 - self.beta2) * self.model.input_layer.grad_w**2
-        self.model.input_layer.w -= self.lr * ((self.input_m_w / (1 - self.pow_beta1)) / (self.eps + np.sqrt(self.input_v_w / (1 - self.pow_beta2))) + self.weight_decay * self.model.input_layer.w)
-        self.input_m_b = self.beta1 * self.input_m_b + (1 - self.beta1) * self.model.input_layer.grad_b
-        self.input_v_b = self.beta2 * self.input_v_b + (1 - self.beta2) * self.model.input_layer.grad_b**2
-        self.model.input_layer.b -= self.lr * ((self.input_m_b / (1 - self.pow_beta1)) / (self.eps + np.sqrt(self.input_v_b / (1 - self.pow_beta2))) + self.weight_decay * self.model.input_layer.b)
-        for hidden_layer, hidden_m_w, hidden_v_w, hidden_m_b, hidden_v_b in zip(
-            self.model.hidden_layers,
-            self.hidden_m_ws,
-            self.hidden_v_ws,
-            self.hidden_m_bs,
-            self.hidden_v_bs
+        for layer, m_w, v_w, m_b, v_b in zip(
+            self.model.layers,
+            self.m_ws,
+            self.v_ws,
+            self.m_bs,
+            self.v_bs
         ):
-            hidden_m_w = self.beta1 * hidden_m_w + (1 - self.beta1) * hidden_layer.grad_w
-            hidden_v_w = self.beta2 * hidden_v_w + (1 - self.beta2) * hidden_layer.grad_w**2
-            hidden_layer.w -= self.lr * ((hidden_m_w / (1 - self.pow_beta1)) / (self.eps + np.sqrt(hidden_v_w / (1 - self.pow_beta2))) + self.weight_decay * hidden_layer.w)
-            hidden_m_b = self.beta1 * hidden_m_b + (1 - self.beta1) * hidden_layer.grad_b
-            hidden_v_b = self.beta2 * hidden_v_b + (1 - self.beta2) * hidden_layer.grad_b**2
-            hidden_layer.b -= self.lr * ((hidden_m_b / (1 - self.pow_beta1)) / (self.eps + np.sqrt(hidden_v_b / (1 - self.pow_beta2))) + self.weight_decay * hidden_layer.b)
-        self.output_m_w = self.beta1 * self.output_m_w + (1 - self.beta1) * self.model.output_layer.grad_w
-        self.output_v_w = self.beta2 * self.output_v_w + (1 - self.beta2) * self.model.output_layer.grad_w**2
-        self.model.output_layer.w -= self.lr * ((self.output_m_w / (1 - self.pow_beta1)) / (self.eps + np.sqrt(self.output_v_w / (1 - self.pow_beta2))) + self.weight_decay * self.model.output_layer.w)
-        self.output_m_b = self.beta1 * self.output_m_b + (1 - self.beta1) * self.model.output_layer.grad_b
-        self.output_v_b = self.beta2 * self.output_v_b + (1 - self.beta2) * self.model.output_layer.grad_b**2
-        self.model.output_layer.b -= self.lr * ((self.output_m_b / (1 - self.pow_beta1)) / (self.eps + np.sqrt(self.output_v_b / (1 - self.pow_beta2))) + self.weight_decay * self.model.output_layer.b)
+            m_w = self.beta1 * m_w + (1 - self.beta1) * layer.grad_w
+            v_w = self.beta2 * v_w + (1 - self.beta2) * layer.grad_w**2
+            layer.w -= self.lr * ((m_w / (1 - self.pow_beta1)) / (self.eps + np.sqrt(v_w / (1 - self.pow_beta2))) + self.weight_decay * layer.w)
+            m_b = self.beta1 * m_b + (1 - self.beta1) * layer.grad_b
+            v_b = self.beta2 * v_b + (1 - self.beta2) * layer.grad_b**2
+            layer.b -= self.lr * ((m_b / (1 - self.pow_beta1)) / (self.eps + np.sqrt(v_b / (1 - self.pow_beta2))) + self.weight_decay * layer.b)
         self.pow_beta1 *= self.beta1
         self.pow_beta2 *= self.beta2
 
@@ -310,17 +253,13 @@ class NAdam(Optimizer):
         self.beta1, self.beta2 = betas
         self.eps = eps
         self.pow_beta1, self.pow_beta2 = betas
-        self.input_m_w, self.input_v_w = np.zeros_like(self.model.input_layer.w), np.zeros_like(self.model.input_layer.w)
-        self.input_m_b, self.input_v_b = np.zeros_like(self.model.input_layer.b), np.zeros_like(self.model.input_layer.b)
-        self.hidden_m_ws, self.hidden_v_ws = [], []
-        self.hidden_m_bs, self.hidden_v_bs = [], []
-        for hidden_layer in self.model.hidden_layers:
-            self.hidden_m_ws.append(np.zeros_like(hidden_layer.w))
-            self.hidden_v_ws.append(np.zeros_like(hidden_layer.w))
-            self.hidden_m_bs.append(np.zeros_like(hidden_layer.b))
-            self.hidden_v_bs.append(np.zeros_like(hidden_layer.b))
-        self.output_m_w, self.output_v_w = np.zeros_like(self.model.output_layer.w), np.zeros_like(self.model.output_layer.w)
-        self.output_m_b, self.output_v_b = np.zeros_like(self.model.output_layer.b), np.zeros_like(self.model.output_layer.b)
+        self.m_ws, self.v_ws = [], []
+        self.m_bs, self.v_bs = [], []
+        for layer in self.model.layers:
+            self.m_ws.append(np.zeros_like(layer.w))
+            self.v_ws.append(np.zeros_like(layer.w))
+            self.m_bs.append(np.zeros_like(layer.b))
+            self.v_bs.append(np.zeros_like(layer.b))
 
     def step(self) -> None:
         """
@@ -328,28 +267,16 @@ class NAdam(Optimizer):
         """
         self.pow_beta1 *= self.beta1
         self.pow_beta2 *= self.beta2
-        self.input_m_w = self.beta1 * self.input_m_w + (1 - self.beta1) * self.model.input_layer.grad_w
-        self.input_v_w = self.beta2 * self.input_v_w + (1 - self.beta2) * self.model.input_layer.grad_w**2
-        self.model.input_layer.w -= self.lr * ((self.beta1 * self.input_m_w + (1 - self.beta1) * self.model.input_layer.grad_w) /((1 - self.pow_beta1) * (self.eps + np.sqrt(self.input_v_w / (1 - self.pow_beta2)))) + self.weight_decay * self.model.input_layer.w)
-        self.input_m_b = self.beta1 * self.input_m_b + (1 - self.beta1) * self.model.input_layer.grad_b
-        self.input_v_b = self.beta2 * self.input_v_b + (1 - self.beta2) * self.model.input_layer.grad_b**2
-        self.model.input_layer.b -= self.lr * ((self.beta1 * self.input_m_b + (1 - self.beta1) * self.model.input_layer.grad_b) /((1 - self.pow_beta1) * (self.eps + np.sqrt(self.input_v_b / (1 - self.pow_beta2)))) + self.weight_decay * self.model.input_layer.b)
-        for hidden_layer, hidden_m_w, hidden_v_w, hidden_m_b, hidden_v_b in zip(
-            self.model.hidden_layers,
-            self.hidden_m_ws,
-            self.hidden_v_ws,
-            self.hidden_m_bs,
-            self.hidden_v_bs
+        for layer, m_w, v_w, m_b, v_b in zip(
+            self.model.layers,
+            self.m_ws,
+            self.v_ws,
+            self.m_bs,
+            self.v_bs
         ):
-            hidden_m_w = self.beta1 * hidden_m_w + (1 - self.beta1) * hidden_layer.grad_w
-            hidden_v_w = self.beta2 * hidden_v_w + (1 - self.beta2) * hidden_layer.grad_w**2
-            hidden_layer.w -= self.lr * ((self.beta1 * hidden_m_w + (1 - self.beta1) * hidden_layer.grad_w) /((1 - self.pow_beta1) * (self.eps + np.sqrt(hidden_v_w / (1 - self.pow_beta2)))) + self.weight_decay * hidden_layer.w)
-            hidden_m_b = self.beta1 * hidden_m_b + (1 - self.beta1) * hidden_layer.grad_b
-            hidden_v_b = self.beta2 * hidden_v_b + (1 - self.beta2) * hidden_layer.grad_b**2
-            hidden_layer.b -= self.lr * ((self.beta1 * hidden_m_b + (1 - self.beta1) * hidden_layer.grad_b) /((1 - self.pow_beta1) * (self.eps + np.sqrt(hidden_v_b / (1 - self.pow_beta2)))) + self.weight_decay * hidden_layer.b)
-        self.output_m_w = self.beta1 * self.output_m_w + (1 - self.beta1) * self.model.output_layer.grad_w
-        self.output_v_w = self.beta2 * self.output_v_w + (1 - self.beta2) * self.model.output_layer.grad_w**2
-        self.model.output_layer.w -= self.lr * ((self.beta1 * self.output_m_w + (1 - self.beta1) * self.model.output_layer.grad_w) /((1 - self.pow_beta1) * (self.eps + np.sqrt(self.output_v_w / (1 - self.pow_beta2)))) + self.weight_decay * self.model.output_layer.w)
-        self.output_m_b = self.beta1 * self.output_m_b + (1 - self.beta1) * self.model.output_layer.grad_b
-        self.output_v_b = self.beta2 * self.output_v_b + (1 - self.beta2) * self.model.output_layer.grad_b**2
-        self.model.output_layer.b -= self.lr * ((self.beta1 * self.output_m_b + (1 - self.beta1) * self.model.output_layer.grad_b) /((1 - self.pow_beta1) * (self.eps + np.sqrt(self.output_v_b / (1 - self.pow_beta2)))) + self.weight_decay * self.model.output_layer.b)
+            m_w = self.beta1 * m_w + (1 - self.beta1) * layer.grad_w
+            v_w = self.beta2 * v_w + (1 - self.beta2) * layer.grad_w**2
+            layer.w -= self.lr * ((self.beta1 * m_w + (1 - self.beta1) * layer.grad_w) /((1 - self.pow_beta1) * (self.eps + np.sqrt(v_w / (1 - self.pow_beta2)))) + self.weight_decay * layer.w)
+            m_b = self.beta1 * m_b + (1 - self.beta1) * layer.grad_b
+            v_b = self.beta2 * v_b + (1 - self.beta2) * layer.grad_b**2
+            layer.b -= self.lr * ((self.beta1 * m_b + (1 - self.beta1) * layer.grad_b) /((1 - self.pow_beta1) * (self.eps + np.sqrt(v_b / (1 - self.pow_beta2)))) + self.weight_decay * layer.b)

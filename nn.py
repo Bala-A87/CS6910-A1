@@ -134,11 +134,10 @@ class FeedForwardNeuralNetwork():
         weight_init: str = 'random',
         clip_norm: float = 1.
     ) -> None:
-        self.input_layer = Layer(input_size, hidden_size, activation, weight_init, clip_norm)
-        self.hidden_layers = []
+        self.layers = [Layer(input_size, hidden_size, activation, weight_init, clip_norm)]
         for i in range(num_layers-1):
-            self.hidden_layers.append(Layer(hidden_size, hidden_size, activation, weight_init, clip_norm))
-        self.output_layer = Layer(hidden_size, output_size, 'softmax', weight_init, clip_norm)
+            self.layers.append(Layer(hidden_size, hidden_size, activation, weight_init, clip_norm))
+        self.layers.append(Layer(hidden_size, output_size, 'softmax', weight_init, clip_norm))
     
     def forward(self, x: np.array, eval_mode: bool = False) -> np.array:
         """
@@ -150,10 +149,10 @@ class FeedForwardNeuralNetwork():
             in each layer. Defaults to False.
         Returns: y_hat (numpy.array): the output produced by the network, of size (output_size,) or (num_samples, output_size)
         """
-        result = self.input_layer.forward(x, eval_mode)
-        for hidden_layer in self.hidden_layers:
-            result = hidden_layer.forward(result, eval_mode)
-        return self.output_layer.forward(result, eval_mode)
+        result = np.copy(x)
+        for layer in self.layers:
+            result = layer.forward(result, eval_mode)
+        return result
     
     def backward(self, accumulated_grads: np.array, y_true) -> None:
         """
@@ -166,18 +165,14 @@ class FeedForwardNeuralNetwork():
             y_true: the true class label(s) for the data input(s) to the network
         """
         self.y_true = y_true
-        accumulated_grads = self.output_layer.backward(accumulated_grads)
-        w_next = self.output_layer.w
-        for hidden_layer in reversed(self.hidden_layers):
-            accumulated_grads = hidden_layer.backward(accumulated_grads, w_next=w_next)
-            w_next = hidden_layer.w
-        self.input_layer.backward(accumulated_grads, w_next=w_next)
+        w_next = None
+        for layer in reversed(self.layers):
+            accumulated_grads = layer.backward(accumulated_grads, w_next)
+            w_next = layer.w
     
     def zero_grad(self) -> None:
         """
         Sets the gradients of all the parameters of the network to zero.
         """
-        self.output_layer.grad_w, self.output_layer.grad_b = 0., 0.
-        for hidden_layer in self.hidden_layers:
-            hidden_layer.grad_w, hidden_layer.grad_b = 0., 0.
-        self.input_layer.grad_w, self.input_layer.grad_b = 0., 0.
+        for layer in self.layers:
+            layer.grad_w, layer.grad_b = 0., 0.
